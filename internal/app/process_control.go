@@ -154,6 +154,9 @@ func (controller *AppGroupController) WakeGroupBriefly(group core.AppGroup, stat
 			continue
 		}
 		if err := controller.validateProcessGeneration(process); err != nil {
+			if shouldClearStaleProcessState(err) {
+				result.Runtime.ClearPause(process.ID)
+			}
 			if shouldReportControlFailure(err) {
 				result.Failures = append(result.Failures, ControlFailure{Process: process, Action: core.ControlActionWakeBriefly, Err: err})
 			}
@@ -163,6 +166,11 @@ func (controller *AppGroupController) WakeGroupBriefly(group core.AppGroup, stat
 			result.Failures = append(result.Failures, ControlFailure{Process: process, Action: core.ControlActionWakeBriefly, Err: err})
 			continue
 		}
+		// A wake is only brief because the pause entry is cleared here:
+		// the next scheduler tick sees the app as not fully paused and
+		// re-pauses it. Keeping the entry would leave the app running
+		// while its status still reported it as paused.
+		result.Runtime.ClearPause(process.ID)
 	}
 
 	return result

@@ -3,6 +3,8 @@ package policy
 import (
 	"testing"
 	"time"
+
+	"github.com/Digital-Shane/open-tamer/internal/core"
 )
 
 func TestCPULimitPlannerCreatesDutyCycle(t *testing.T) {
@@ -68,5 +70,47 @@ func TestCPULimitPlannerHonorsKillSwitch(t *testing.T) {
 	}
 	if plan.Reason != CPULimitReasonDisabled {
 		t.Fatalf("reason = %q", plan.Reason)
+	}
+}
+
+func TestCPULimitDutyCycleReleasesAfterUnderLimitTicks(t *testing.T) {
+	runtime := core.AppControlRuntime{
+		Status:          core.AppStatusCPULimited,
+		CPULimitTarget:  50,
+		CPULimitRunFor:  5 * time.Second,
+		CPULimitStopFor: 5 * time.Second,
+	}
+	underLimit := CPULimitPlan{Active: false, Reason: CPULimitReasonUnderLimit}
+
+	for tick := 1; tick < CPULimitReleaseAfterUnderLimitTicks; tick++ {
+		_, _, _, active, ticks := cpuLimitDutyCycle(underLimit, runtime, 50)
+		if !active {
+			t.Fatalf("tick %d: limit released too early", tick)
+		}
+		if ticks != tick {
+			t.Fatalf("tick %d: under-limit ticks = %d, want %d", tick, ticks, tick)
+		}
+		runtime.CPULimitUnderLimitTicks = ticks
+	}
+
+	_, _, _, active, _ := cpuLimitDutyCycle(underLimit, runtime, 50)
+	if active {
+		t.Fatal("limit should release after the under-limit tick threshold, not latch on")
+	}
+}
+
+func TestCPULimitDutyCycleResetsUnderLimitTicksOnOverTarget(t *testing.T) {
+	runtime := core.AppControlRuntime{
+		Status:                  core.AppStatusCPULimited,
+		CPULimitTarget:          50,
+		CPULimitRunFor:          5 * time.Second,
+		CPULimitStopFor:         5 * time.Second,
+		CPULimitUnderLimitTicks: 2,
+	}
+	overLimit := CPULimitPlan{Active: true, RunFor: 5 * time.Second, StopFor: 5 * time.Second, Explanation: "above target"}
+
+	_, _, _, active, ticks := cpuLimitDutyCycle(overLimit, runtime, 50)
+	if !active || ticks != 0 {
+		t.Fatalf("active = %v, ticks = %d, want active with 0 ticks", active, ticks)
 	}
 }
