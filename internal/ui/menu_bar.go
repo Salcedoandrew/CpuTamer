@@ -27,6 +27,8 @@ type ProcessRow struct {
 	CanSlow                 bool           `json:"canSlow"`
 	TrackedInMenuBar        bool           `json:"trackedInMenuBar,omitempty"`
 	TrackedInManagedApps    bool           `json:"trackedInManagedApps,omitempty"`
+	OnlyWhenHidden          bool           `json:"onlyWhenHidden,omitempty"`
+	ProtectAudio            bool           `json:"protectAudio,omitempty"`
 	SystemBucket            bool           `json:"systemBucket,omitempty"`
 }
 
@@ -46,6 +48,8 @@ type ManagedAppRow struct {
 	CanSlow                 bool           `json:"canSlow"`
 	TrackedInMenuBar        bool           `json:"trackedInMenuBar,omitempty"`
 	TrackedInManagedApps    bool           `json:"trackedInManagedApps,omitempty"`
+	OnlyWhenHidden          bool           `json:"onlyWhenHidden,omitempty"`
+	ProtectAudio            bool           `json:"protectAudio,omitempty"`
 }
 
 type GraphPoint struct {
@@ -357,6 +361,8 @@ func buildRuleProcessRows(rules []core.AppRule, groups []core.AppGroup, samples 
 			CanSlow:              safety.AllowsRule(core.RuleModeLowerPriorityInBackground),
 			TrackedInMenuBar:     rule.TracksIn(core.RuleTrackInMenuBar),
 			TrackedInManagedApps: rule.TracksIn(core.RuleTrackInManagedApps),
+			OnlyWhenHidden:       rule.OnlyWhenHidden,
+			ProtectAudio:         rule.ProtectAudio,
 		})
 	}
 
@@ -416,6 +422,8 @@ func BuildManagedRows(rules []core.AppRule, groups []core.AppGroup, samples []co
 			CanSlow:              canSlow,
 			TrackedInMenuBar:     rule.TracksIn(core.RuleTrackInMenuBar),
 			TrackedInManagedApps: true,
+			OnlyWhenHidden:       rule.OnlyWhenHidden,
+			ProtectAudio:         rule.ProtectAudio,
 		})
 	}
 

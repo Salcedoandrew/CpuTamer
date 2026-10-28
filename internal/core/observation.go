@@ -8,6 +8,10 @@ type AppProcessHint struct {
 	ExecutablePath string    `json:"executablePath,omitempty"`
 	BundlePath     string    `json:"bundlePath,omitempty"`
 	UID            int       `json:"uid,omitempty"`
+	// Hidden reports whether the app is hidden (Cmd+H / Hide) according to
+	// AppKit. It is advisory: the scheduler matches it by bundle/path/name,
+	// falling back to display name for name-aggregated groups.
+	Hidden bool `json:"hidden,omitempty"`
 }
 
 type ProcessMetrics struct {

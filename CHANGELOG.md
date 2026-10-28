@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.5.0] - 2026-10-27
+### Added
+- Per-app "Only stop or slow when hidden" rule option (AppTamer-style): pause, lower-priority, and CPU-limit rules now stay idle while the app is merely in the background and only apply once the app is hidden; unhiding restores full speed on the next tick.
+- Per-app "Don't stop or slow when sound is playing" toggle in the per-app menu, alongside the hidden-only option. Audio protection was already default-on for new rules; it can now be switched off per app.
+
 ## [v1.4.1] - 2026-09-12
 ### Fixed
 - Set the build deployment target to macOS 14.0.

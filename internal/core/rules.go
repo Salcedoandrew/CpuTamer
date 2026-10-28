@@ -52,6 +52,7 @@ type AppRule struct {
 	CPUPercent            *float64               `json:"cpuPercent,omitempty"`
 	HideWhenStopped       bool                   `json:"hideWhenStopped"`
 	ProtectAudio          bool                   `json:"protectAudio"`
+	OnlyWhenHidden        bool                   `json:"onlyWhenHidden,omitempty"`
 	AllowBrowserPause     bool                   `json:"allowBrowserPause"`
 	PreferEfficiencyCores bool                   `json:"preferEfficiencyCores"`
 }

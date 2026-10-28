@@ -1197,6 +1197,30 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
     return value == nil || value == [NSNull null] ? YES : [value boolValue];
 }
 
+- (BOOL)rowFlag:(NSDictionary *)row key:(NSString *)key {
+    id value = row[key];
+    return value != nil && value != [NSNull null] && [value boolValue];
+}
+
+// AppTamer-style per-app option checkboxes. The Go command handler is a
+// no-op when the app has no rule yet, so these are most useful in the
+// tracked/managed menus where a rule already exists.
+- (void)addRuleOptionItemsForRow:(NSDictionary *)row toMenu:(NSMenu *)menu {
+    NSString *appKey = [self appKeyFromRow:row];
+    if (appKey.length == 0) {
+        return;
+    }
+    BOOL enabled = [self rowCanSlow:row] || [self rowCanPause:row];
+    NSMenuItem *hidden = [self commandItemWithTitle:@"Only stop or slow when hidden" command:[NSString stringWithFormat:@"rule|toggle-only-hidden|%@", appKey]];
+    [self setCommandItem:hidden enabled:enabled];
+    [self setCommandItem:hidden state:[self rowFlag:row key:@"onlyWhenHidden"] ? NSControlStateValueOn : NSControlStateValueOff];
+    [menu addItem:hidden];
+    NSMenuItem *audio = [self commandItemWithTitle:@"Don't stop or slow when sound is playing" command:[NSString stringWithFormat:@"rule|toggle-protect-audio|%@", appKey]];
+    [self setCommandItem:audio enabled:enabled];
+    [self setCommandItem:audio state:[self rowFlag:row key:@"protectAudio"] ? NSControlStateValueOn : NSControlStateValueOff];
+    [menu addItem:audio];
+}
+
 - (BOOL)rowIsSystemBucket:(NSDictionary *)row {
     id value = row[@"systemBucket"];
     return value != nil && value != [NSNull null] && [value boolValue];
@@ -1309,6 +1333,7 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
     NSMenuItem *pause = [self commandItemWithTitle:@"Pause in Background" command:[NSString stringWithFormat:@"rule|pause|%@", appKey]];
     [self setCommandItem:pause enabled:[self rowCanPause:row]];
     [menu addItem:pause];
+    [self addRuleOptionItemsForRow:row toMenu:menu];
     return menu;
 }
 
@@ -1384,6 +1409,7 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
     NSMenuItem *pause = [self commandItemWithTitle:@"Pause in Background" command:[NSString stringWithFormat:@"rule|pause|%@", appKey]];
     [self setCommandItem:pause enabled:[self rowCanPause:row]];
     [submenu addItem:pause];
+    [self addRuleOptionItemsForRow:row toMenu:submenu];
     return submenu;
 }
 
@@ -1495,6 +1521,7 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
     NSMenuItem *pause = [self commandItemWithTitle:@"Pause in Background" command:[NSString stringWithFormat:@"rule|pause|%@", appKey]];
     [self setCommandItem:pause enabled:[self rowCanPause:row]];
     [submenu addItem:pause];
+    [self addRuleOptionItemsForRow:row toMenu:submenu];
     [submenu addItem:NSMenuItem.separatorItem];
     [submenu addItem:[self commandItemWithTitle:@"Remove Rule" command:[NSString stringWithFormat:@"disable-rule|%@", appKey]]];
     return submenu;
