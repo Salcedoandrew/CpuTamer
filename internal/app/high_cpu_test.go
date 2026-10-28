@@ -105,3 +105,37 @@ func highCPUGroup(app core.AppID, pid int) core.AppGroup {
 		}},
 	}
 }
+
+func TestHighCPUDetectorSkipsMutedApps(t *testing.T) {
+	app := core.AppID{BundleID: "com.example.app", Name: "Example"}
+	group := highCPUGroup(app, 42)
+	detector := NewHighCPUDetector()
+	config := HighCPUConfig{
+		Enabled:   true,
+		Threshold: 50,
+		Duration:  time.Second,
+		MutedApps: map[string]bool{app.Key(): true},
+	}
+
+	detector.Update(config, []core.AppGroup{group}, []core.AppCPUSample{{AppID: app, CPUPercent: 80}}, nil, time.Unix(1, 0))
+	notices := detector.Update(config, []core.AppGroup{group}, []core.AppCPUSample{{AppID: app, CPUPercent: 80}}, nil, time.Unix(3, 0))
+	if len(notices) != 0 {
+		t.Fatalf("muted notices = %#v, want none", notices)
+	}
+}
+
+func TestHighCPUDetectorNoticeCarriesWarningTrigger(t *testing.T) {
+	app := core.AppID{Name: "Example"}
+	group := highCPUGroup(app, 42)
+	detector := NewHighCPUDetector()
+	config := HighCPUConfig{Enabled: true, Threshold: 50, Duration: 5 * time.Second}
+
+	detector.Update(config, []core.AppGroup{group}, []core.AppCPUSample{{AppID: app, CPUPercent: 80}}, nil, time.Unix(10, 0))
+	notices := detector.Update(config, []core.AppGroup{group}, []core.AppCPUSample{{AppID: app, CPUPercent: 80}}, nil, time.Unix(16, 0))
+	if len(notices) != 1 {
+		t.Fatalf("notices = %#v, want one", notices)
+	}
+	if notices[0].ThresholdPercent != 50 || notices[0].AlertAfter != 5*time.Second {
+		t.Fatalf("notice trigger = %.0f%% / %v, want 50%% / 5s", notices[0].ThresholdPercent, notices[0].AlertAfter)
+	}
+}

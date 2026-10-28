@@ -52,6 +52,17 @@ func (controller *Controller) handleMenuCommandLocked(command string) bool {
 		controller.saveConfigLocked()
 	case "pref-bool", "pref-duration", "pref-float", "pref-string", "pref-clear":
 		controller.handlePreferenceCommandLocked(parts)
+	case "mute-high-cpu":
+		// From the high-CPU warning's "Don't warn about this app"
+		// action. Persists in preferences; the detector skips muted
+		// apps until unmuted from Preferences > High CPU Alerts.
+		if len(parts) >= 2 && parts[1] != "" {
+			controller.muteHighCPUAppLocked(parts[1])
+		}
+	case "unmute-high-cpu":
+		if len(parts) >= 2 && parts[1] != "" {
+			controller.unmuteHighCPUAppLocked(parts[1])
+		}
 	case "rule":
 		controller.handleRuleCommandLocked(parts)
 	case "disable-rule":
@@ -66,6 +77,31 @@ func (controller *Controller) handleMenuCommandLocked(command string) bool {
 		log.Printf("OpenTamer unknown menu command: %q", command)
 	}
 	return true
+}
+
+func (controller *Controller) muteHighCPUAppLocked(appKey string) {
+	for _, muted := range controller.cfg.Preferences.MutedHighCPUApps {
+		if muted == appKey {
+			return
+		}
+	}
+	controller.cfg.Preferences.MutedHighCPUApps = append(controller.cfg.Preferences.MutedHighCPUApps, appKey)
+	controller.saveConfigLocked()
+}
+
+func (controller *Controller) unmuteHighCPUAppLocked(appKey string) {
+	muted := controller.cfg.Preferences.MutedHighCPUApps
+	kept := muted[:0]
+	for _, key := range muted {
+		if key != appKey {
+			kept = append(kept, key)
+		}
+	}
+	if len(kept) == len(muted) {
+		return
+	}
+	controller.cfg.Preferences.MutedHighCPUApps = kept
+	controller.saveConfigLocked()
 }
 
 func (controller *Controller) handlePreferenceCommandLocked(parts []string) {

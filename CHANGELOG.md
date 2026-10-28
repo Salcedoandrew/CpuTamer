@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.6.0] - 2026-10-27
+### Added
+- Actionable high-CPU warning (AppTamer-style): when an app stays above the threshold for the configured duration, the notification now reads "<App> has been using more than <threshold>% CPU for over <duration>." with "What would you like to do about it?" and four buttons: "Let it continue" (dismiss; the cooldown still spaces out repeat warnings), "Limit its CPU usage" (applies a background-only 25% CPU-limit rule to that app), "Don't warn about <App>" (mutes that app's warnings until unmuted from Preferences > High CPU Alerts > Muted Apps), and "Change notification settings" (opens the Preferences menu). Tapping the warning itself also opens Preferences.
+
 ## [v1.5.0] - 2026-10-27
 ### Added
 - Per-app "Only stop or slow when hidden" rule option (AppTamer-style): pause, lower-priority, and CPU-limit rules now stay idle while the app is merely in the background and only apply once the app is hidden; unhiding restores full speed on the next tick.

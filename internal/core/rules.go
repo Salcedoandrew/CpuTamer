@@ -134,7 +134,11 @@ type GlobalPreferences struct {
 	// ShowSystemProcesses lists safety-blocked system processes in the
 	// process menus. Off by default: system processes stay hidden and
 	// their CPU is folded into the "System / Other" residual row.
-	ShowSystemProcesses           bool          `json:"showSystemProcesses,omitempty"`
+	ShowSystemProcesses bool `json:"showSystemProcesses,omitempty"`
+	// MutedHighCPUApps holds app keys muted via the high-CPU warning's
+	// "Don't warn about this app" action. Muted apps never warn until
+	// unmuted from Preferences > High CPU Alerts.
+	MutedHighCPUApps              []string      `json:"mutedHighCPUApps,omitempty"`
 	TopProcessesSort              string        `json:"topProcessesSort"`
 	CPUDisplayMode                string        `json:"cpuDisplayMode"`
 	StatsInterval                 time.Duration `json:"statsInterval"`
