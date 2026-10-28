@@ -12,7 +12,11 @@ type HighCPUNotice struct {
 	AppName     string        `json:"appName"`
 	CPUPercent  float64       `json:"cpuPercent"`
 	ExceededFor time.Duration `json:"exceededFor"`
-	At          time.Time     `json:"at"`
+	// ThresholdPercent and AlertAfter carry the configured trigger so
+	// the warning can read, e.g., "more than 75% CPU for over 30 seconds".
+	ThresholdPercent float64       `json:"thresholdPercent"`
+	AlertAfter       time.Duration `json:"alertAfter"`
+	At               time.Time     `json:"at"`
 }
 
 type Notifier interface {
@@ -25,6 +29,9 @@ type HighCPUConfig struct {
 	Duration        time.Duration
 	Cooldown        time.Duration
 	LogicalCPUCount int
+	// MutedApps holds app keys the user muted via "Don't warn about
+	// this app". Muted apps never produce a notice.
+	MutedApps map[string]bool
 }
 
 type highCPUAppState struct {
@@ -41,12 +48,19 @@ func NewHighCPUDetector() *HighCPUDetector {
 }
 
 func HighCPUConfigFromPreferences(preferences core.GlobalPreferences) HighCPUConfig {
+	muted := make(map[string]bool, len(preferences.MutedHighCPUApps))
+	for _, key := range preferences.MutedHighCPUApps {
+		if key != "" {
+			muted[key] = true
+		}
+	}
 	return HighCPUConfig{
 		Enabled:         preferences.HighCPUDetectionEnabled,
 		Threshold:       preferences.HighCPUThreshold,
 		Duration:        preferences.HighCPUDuration,
 		Cooldown:        preferences.HighCPUCooldown,
 		LogicalCPUCount: runtime.NumCPU(),
+		MutedApps:       muted,
 	}
 }
 
@@ -65,6 +79,13 @@ func (detector *HighCPUDetector) Update(config HighCPUConfig, groups []core.AppG
 	for _, sample := range samples {
 		key := sample.AppID.Key()
 		state := detector.states[key]
+		if config.MutedApps[key] {
+			// A muted app never warns, and muting mid-exceedance
+			// resets the timer so unmuting starts a fresh duration.
+			state.ExceededSince = time.Time{}
+			detector.states[key] = state
+			continue
+		}
 		systemCPUPercent := systemNormalizedCPUPercent(sample.CPUPercent, config.LogicalCPUCount)
 		if managedStatusExplainsCPU(statuses[key]) || systemCPUPercent < config.Threshold {
 			state.ExceededSince = time.Time{}
@@ -87,11 +108,13 @@ func (detector *HighCPUDetector) Update(config HighCPUConfig, groups []core.AppG
 		}
 
 		notice := HighCPUNotice{
-			AppID:       sample.AppID,
-			AppName:     sample.AppID.DisplayName(),
-			CPUPercent:  systemCPUPercent,
-			ExceededFor: exceededFor,
-			At:          now,
+			AppID:            sample.AppID,
+			AppName:          sample.AppID.DisplayName(),
+			CPUPercent:       systemCPUPercent,
+			ExceededFor:      exceededFor,
+			ThresholdPercent: config.Threshold,
+			AlertAfter:       config.Duration,
+			At:               now,
 		}
 		notices = append(notices, notice)
 		state.LastNotifiedAt = now

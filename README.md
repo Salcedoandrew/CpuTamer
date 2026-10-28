@@ -133,6 +133,8 @@ threshold is `75%`, the default duration is `30 seconds`, and the default cooldo
 
 These alerts are meant to catch surprise CPU use without turning every short spike into a notification.
 
+The warning is actionable: "Let it continue" dismisses it, "Limit its CPU usage" applies a background-only 25% CPU-limit rule to that app, "Don't warn about <App>" mutes that app's warnings (unmute it from Preferences > High CPU Alerts > Muted Apps), and "Change notification settings" opens the Preferences menu.
+
 ### Policy Guards
 
 Policy guards can temporarily disable management when the system is in a state where control rules are more likely to be

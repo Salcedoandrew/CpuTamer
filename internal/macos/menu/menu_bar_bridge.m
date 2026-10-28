@@ -1047,6 +1047,23 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
     button.toolTip = @"OpenTamer";
 }
 
+// Muted high-CPU app keys are "bundle:<id>", "path:<path>", or
+// "name:<name>". The submenu only needs a readable label; the full key
+// stays in the command string.
+- (NSString *)displayNameForMutedAppKey:(NSString *)appKey {
+    NSString *remainder = appKey;
+    for (NSString *prefix in @[@"bundle:", @"path:", @"name:"]) {
+        if ([appKey hasPrefix:prefix]) {
+            remainder = [appKey substringFromIndex:prefix.length];
+            break;
+        }
+    }
+    if ([appKey hasPrefix:@"path:"]) {
+        return remainder.lastPathComponent;
+    }
+    return remainder;
+}
+
 - (NSMenuItem *)commandItemWithTitle:(NSString *)title command:(NSString *)command {
     BOOL keepMenuOpen = OpenTamerCommandShouldKeepMenuOpen(command);
     NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title
@@ -1815,6 +1832,21 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
                                   labels:@[@"1 minute", @"5 minutes", @"10 minutes", @"30 minutes", @"1 hour"]
                                  seconds:@[@60, @300, @600, @1800, @3600]
                                   toMenu:alertsMenu];
+    id mutedApps = [self preferences][@"mutedHighCPUApps"];
+    if ([mutedApps isKindOfClass:NSArray.class] && ((NSArray *)mutedApps).count > 0) {
+        NSMenuItem *muted = [[NSMenuItem alloc] initWithTitle:@"Muted Apps" action:nil keyEquivalent:@""];
+        NSMenu *mutedMenu = [[OpenTamerPersistentMenu alloc] initWithTitle:@"Muted Apps"];
+        for (id entry in (NSArray *)mutedApps) {
+            if (![entry isKindOfClass:NSString.class] || ((NSString *)entry).length == 0) {
+                continue;
+            }
+            NSString *appKey = entry;
+            NSString *title = [NSString stringWithFormat:@"Unmute %@", [self displayNameForMutedAppKey:appKey]];
+            [mutedMenu addItem:[self commandItemWithTitle:title command:[NSString stringWithFormat:@"unmute-high-cpu|%@", appKey]]];
+        }
+        muted.submenu = mutedMenu;
+        [alertsMenu addItem:muted];
+    }
     alerts.submenu = alertsMenu;
     [submenu addItem:alerts];
 
@@ -2406,6 +2438,21 @@ void OpenTamerUpdateMenuBarJSON(const char *state_json) {
             }
         });
     }
+}
+
+// Pops the Preferences menu from the status item button. Used by the
+// high-CPU warning's "Change notification settings" action (and by
+// tapping the warning itself); the notification delegate has no panel
+// view to anchor to, so the status button is the anchor.
+void OpenTamerShowPreferencesMenu(void) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        OpenTamerMenuBarController *controller = OpenTamerMenuBar;
+        NSView *button = controller.statusItem.button;
+        if (controller == nil || button == nil) {
+            return;
+        }
+        [controller popUpMenu:[controller preferencesMenu] fromPanel:button action:@{}];
+    });
 }
 
 void OpenTamerRunMenuBarApp(const char *initial_state_json) {

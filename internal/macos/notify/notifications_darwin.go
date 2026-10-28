@@ -12,6 +12,7 @@ import "C"
 import (
 	"fmt"
 	"log"
+	"time"
 	"unsafe"
 
 	"github.com/Digital-Shane/open-tamer/internal/app"
@@ -19,7 +20,9 @@ import (
 
 const notificationQueueSize = 16
 
-var deliverNotification = deliverNativeNotification
+// deliverWarningNotification delivers the actionable high-CPU warning.
+// It is a variable so darwin tests can stub the native delivery.
+var deliverWarningNotification = deliverNativeWarningNotification
 
 type UserNotifier struct {
 	queue chan app.HighCPUNotice
@@ -51,18 +54,49 @@ func (notifier *UserNotifier) run() {
 	}
 }
 
+// deliverHighCPUNotification formats the warning in the style of the
+// AppTamer high-CPU popup: "<App> has been using more than <threshold>%
+// CPU for over <duration>." with "What would you like to do about it?"
+// as the body. The native side adds the action buttons.
 func deliverHighCPUNotification(notice app.HighCPUNotice) error {
-	return deliverNotification("High CPU usage", fmt.Sprintf("%s is using %.0f%% CPU.", notice.AppName, notice.CPUPercent))
+	threshold := notice.ThresholdPercent
+	if threshold <= 0 {
+		threshold = notice.CPUPercent
+	}
+	title := fmt.Sprintf("%s has been using more than %.0f%% CPU for over %s.", notice.AppName, threshold, formatAlertDuration(notice.AlertAfter))
+	return deliverWarningNotification(title, "What would you like to do about it?", notice.AppID.Key(), notice.AppName)
 }
 
-func deliverNativeNotification(titleText, bodyText string) error {
+// formatAlertDuration renders a configured alert-after duration the way
+// the warning title reads it: seconds below a minute, whole minutes at
+// or above it.
+func formatAlertDuration(duration time.Duration) string {
+	if duration >= time.Minute {
+		minutes := int(duration / time.Minute)
+		if minutes == 1 {
+			return "1 minute"
+		}
+		return fmt.Sprintf("%d minutes", minutes)
+	}
+	seconds := int(duration / time.Second)
+	if seconds <= 1 {
+		return "1 second"
+	}
+	return fmt.Sprintf("%d seconds", seconds)
+}
+
+func deliverNativeWarningNotification(titleText, bodyText, appKey, appName string) error {
 	title := C.CString(titleText)
 	body := C.CString(bodyText)
+	key := C.CString(appKey)
+	name := C.CString(appName)
 	defer C.free(unsafe.Pointer(title))
 	defer C.free(unsafe.Pointer(body))
+	defer C.free(unsafe.Pointer(key))
+	defer C.free(unsafe.Pointer(name))
 
 	var nativeError *C.char
-	if C.OpenTamerDeliverNotification(title, body, &nativeError) != 1 {
+	if C.OpenTamerDeliverHighCPUWarning(title, body, key, name, &nativeError) != 1 {
 		if nativeError != nil {
 			defer C.free(unsafe.Pointer(nativeError))
 			message := C.GoString(nativeError)

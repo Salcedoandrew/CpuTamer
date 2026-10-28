@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `packaging/Info.plist` `CFBundleVersion` is the monotonically increasing Apple build number for distributable app bundles.
 
 ## Unreleased
+### Added
+- Actionable high-CPU warning (AppTamer-style): when an app stays above the threshold for the configured duration, the notification now reads "<App> has been using more than <threshold>% CPU for over <duration>." with "What would you like to do about it?" and four buttons: "Let it continue" (dismiss; the cooldown still spaces out repeat warnings), "Limit its CPU usage" (applies a background-only 25% CPU-limit rule to that app), "Don't warn about <App>" (mutes that app's warnings until unmuted from Preferences > High CPU Alerts > Muted Apps), and "Change notification settings" (opens the Preferences menu). Tapping the warning itself also opens Preferences.
 
 ## [v1.5.0] - 2026-10-27
 ### Added

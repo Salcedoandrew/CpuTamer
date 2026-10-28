@@ -24,6 +24,8 @@ func TestNotificationBridgePresentsForegroundNotifications(t *testing.T) {
 		"UNNotificationPresentationOptionBanner",
 		"center.delegate",
 		"dispatch_semaphore_wait",
+		"didReceiveNotificationResponse",
+		"OpenTamerDeliverHighCPUWarning",
 		"char **error_out",
 	} {
 		if !strings.Contains(text, want) {
