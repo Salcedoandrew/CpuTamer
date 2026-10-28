@@ -22,6 +22,7 @@ func (controller *Controller) Refresh() {
 	runtimeState := controller.runtime
 	stats := controller.stats
 	lastTotalCPU := controller.lastTotalCPU
+	lastStatuses := controller.lastStatuses
 	controller.mu.Unlock()
 
 	var hints []core.AppProcessHint
@@ -33,11 +34,13 @@ func (controller *Controller) Refresh() {
 		}
 	}
 	var frontmost core.AppID
+	frontmostKnown := true
 	if needsFrontmostApp(cfg.Rules) {
 		var frontErr error
 		frontmost, frontErr = controller.applications.FrontmostAppID()
 		if frontErr != nil {
 			log.Printf("OpenTamer frontmost app warning: %v", frontErr)
+			frontmostKnown = false
 		}
 	}
 	processes, processErr := controller.processes.Processes()
@@ -95,21 +98,34 @@ func (controller *Controller) Refresh() {
 		BrowserLikeByApp: browserMap(groups),
 	}
 
-	result := controller.scheduler.Evaluate(apppolicy.SchedulerInput{
-		Groups:      groups,
-		Rules:       cfg.Rules,
-		AppSamples:  appSamples,
-		Preferences: cfg.Preferences,
-		Runtime:     runtimeState,
-		Frontmost:   frontmost,
-		Policy:      policy,
-		Protections: protections,
-		Now:         policyNow,
-	})
+	var result apppolicy.SchedulerResult
+	var failures []ControlFailure
+	if !frontmostKnown {
+		// An empty frontmost app is indistinguishable from "no app is
+		// in front", so a failed lookup would make every
+		// background-rule app — including the one in use — eligible
+		// for pausing on this tick. Freeze controls for this tick
+		// instead: observations and the menu still update, runtime
+		// and the CPU limiter are left untouched, and the next
+		// successful lookup resumes normal control.
+		result = apppolicy.SchedulerResult{Runtime: runtimeState, Statuses: lastStatuses}
+	} else {
+		result = controller.scheduler.Evaluate(apppolicy.SchedulerInput{
+			Groups:      groups,
+			Rules:       cfg.Rules,
+			AppSamples:  appSamples,
+			Preferences: cfg.Preferences,
+			Runtime:     runtimeState,
+			Frontmost:   frontmost,
+			Policy:      policy,
+			Protections: protections,
+			Now:         policyNow,
+		})
 
-	runtimeState, failures := controller.executeActions(groups, result.Actions, result.Runtime)
-	if controller.limiter != nil {
-		controller.limiter.Update(cpuLimitRequests(groups, result.Actions))
+		runtimeState, failures = controller.executeActions(groups, result.Actions, result.Runtime)
+		if controller.limiter != nil {
+			controller.limiter.Update(cpuLimitRequests(groups, result.Actions))
+		}
 	}
 	for _, failure := range failures {
 		log.Printf("OpenTamer action failure: %s", failure.Error())

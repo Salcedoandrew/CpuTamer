@@ -105,6 +105,41 @@ func TestExecuteActionsSkipsResumeForMismatchedProcessGeneration(t *testing.T) {
 	}
 }
 
+func TestWakeBrieflyClearsPauseSoNextTickRepauses(t *testing.T) {
+	group := processControlGroup(core.AppID{Name: "Sleeper"}, 42)
+	state := core.NewRuntimeState()
+	state.RecordPause(group.Processes[0], group.ID, core.ControlReasonUserRule, time.Unix(1, 0))
+	signals := &fakeSignals{}
+
+	result := (&AppGroupController{Signals: signals}).WakeGroupBriefly(group, state, time.Unix(2, 0))
+
+	if len(result.Failures) != 0 {
+		t.Fatalf("failures = %#v", result.Failures)
+	}
+	if len(signals.continued) != 1 {
+		t.Fatalf("continued = %v, want one SIGCONT", signals.continued)
+	}
+	if result.Runtime.IsPausedByOpenTamer(group.Processes[0].ID) {
+		t.Fatal("woken process should not stay recorded as paused, or it would never be re-paused")
+	}
+}
+
+func TestWakeBrieflyKeepsPauseOnContinueFailure(t *testing.T) {
+	group := processControlGroup(core.AppID{Name: "Sleeper"}, 42)
+	state := core.NewRuntimeState()
+	state.RecordPause(group.Processes[0], group.ID, core.ControlReasonUserRule, time.Unix(1, 0))
+	signals := &fakeSignals{continueErrors: map[int]error{42: errors.New("permission denied")}}
+
+	result := (&AppGroupController{Signals: signals}).WakeGroupBriefly(group, state, time.Unix(2, 0))
+
+	if len(result.Failures) != 1 {
+		t.Fatalf("failures = %d, want 1", len(result.Failures))
+	}
+	if !result.Runtime.IsPausedByOpenTamer(group.Processes[0].ID) {
+		t.Fatal("failed wake should keep the pause entry for retry")
+	}
+}
+
 func TestSchedulerEmitsPeriodicWakeForPausedApp(t *testing.T) {
 	app := core.AppID{BundleID: "com.example.app", Name: "Example"}
 	group := processControlGroup(app, 42)

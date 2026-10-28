@@ -212,4 +212,9 @@ type AppControlRuntime struct {
 	CPULimitTarget     float64       `json:"cpuLimitTarget,omitempty"`
 	CPULimitRunFor     time.Duration `json:"cpuLimitRunFor,omitempty"`
 	CPULimitStopFor    time.Duration `json:"cpuLimitStopFor,omitempty"`
+	// CPULimitUnderLimitTicks counts consecutive scheduler ticks where a
+	// previously limited app was observed at or below its target. The
+	// limit is released once this reaches the policy threshold, so a
+	// limit cannot latch on forever after one over-target sample.
+	CPULimitUnderLimitTicks int `json:"cpuLimitUnderLimitTicks,omitempty"`
 }

@@ -249,17 +249,19 @@ func (scheduler *Scheduler) Evaluate(input SchedulerInput) SchedulerResult {
 				TargetCPU:   target,
 				BrowserLike: input.Protections.IsBrowserLike(group.ID),
 			})
-			runFor, stopFor, message, active := cpuLimitDutyCycle(plan, appRuntime, target)
+			runFor, stopFor, message, active, underLimitTicks := cpuLimitDutyCycle(plan, appRuntime, target)
 			if active {
 				result.Actions = append(result.Actions, cpuLimitAction(group, target, runFor, stopFor, message, now))
 				appRuntime.CPULimitTarget = target
 				appRuntime.CPULimitRunFor = runFor
 				appRuntime.CPULimitStopFor = stopFor
+				appRuntime.CPULimitUnderLimitTicks = underLimitTicks
 				appRuntime.Status = core.AppStatusCPULimited
 			} else {
 				appRuntime.CPULimitTarget = 0
 				appRuntime.CPULimitRunFor = 0
 				appRuntime.CPULimitStopFor = 0
+				appRuntime.CPULimitUnderLimitTicks = 0
 				appRuntime.Status = core.AppStatusEligible
 			}
 		case core.RuleModeHideAfterIdle:
@@ -321,21 +323,32 @@ func cpuLimitAction(group core.AppGroup, target float64, runFor, stopFor time.Du
 	}
 }
 
-func cpuLimitDutyCycle(plan CPULimitPlan, runtime core.AppControlRuntime, target float64) (time.Duration, time.Duration, string, bool) {
+// CPULimitReleaseAfterUnderLimitTicks is how many consecutive
+// under-target ticks release a previously active CPU limit. One tick is
+// not enough: a duty-cycled app's observed CPU will usually fall below
+// target while it is being limited, so releasing on the first such tick
+// would flap the limiter on and off every tick.
+const CPULimitReleaseAfterUnderLimitTicks = 3
+
+func cpuLimitDutyCycle(plan CPULimitPlan, runtime core.AppControlRuntime, target float64) (runFor, stopFor time.Duration, message string, active bool, underLimitTicks int) {
 	previousActive := runtime.Status == core.AppStatusCPULimited &&
 		runtime.CPULimitTarget == target &&
 		runtime.CPULimitRunFor > 0 &&
 		runtime.CPULimitStopFor > 0
 	if plan.Active {
 		if previousActive && runtime.CPULimitStopFor >= plan.StopFor {
-			return runtime.CPULimitRunFor, runtime.CPULimitStopFor, "continuing previous CPU limit duty cycle", true
+			return runtime.CPULimitRunFor, runtime.CPULimitStopFor, "continuing previous CPU limit duty cycle", true, 0
 		}
-		return plan.RunFor, plan.StopFor, plan.Explanation, true
+		return plan.RunFor, plan.StopFor, plan.Explanation, true, 0
 	}
 	if previousActive && plan.Reason == CPULimitReasonUnderLimit {
-		return runtime.CPULimitRunFor, runtime.CPULimitStopFor, "continuing previous CPU limit duty cycle", true
+		underLimitTicks = runtime.CPULimitUnderLimitTicks + 1
+		if underLimitTicks >= CPULimitReleaseAfterUnderLimitTicks {
+			return 0, 0, "", false, 0
+		}
+		return runtime.CPULimitRunFor, runtime.CPULimitStopFor, "continuing previous CPU limit duty cycle", true, underLimitTicks
 	}
-	return 0, 0, "", false
+	return 0, 0, "", false, 0
 }
 
 func samplesByApp(samples []core.AppCPUSample) map[string]core.AppCPUSample {
@@ -613,6 +626,7 @@ func clearCPULimitRuntime(runtime *core.AppControlRuntime) {
 	runtime.CPULimitTarget = 0
 	runtime.CPULimitRunFor = 0
 	runtime.CPULimitStopFor = 0
+	runtime.CPULimitUnderLimitTicks = 0
 }
 
 func statusForForeground(group core.AppGroup, runtime core.RuntimeState) core.AppStatus {
