@@ -1243,6 +1243,8 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
 - (NSMenuItem *)cpuLimitScopeItemWithTitle:(NSString *)title mode:(NSString *)mode appKey:(NSString *)appKey {
     NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title action:nil keyEquivalent:@""];
     NSMenu *submenu = [[OpenTamerPersistentMenu alloc] initWithTitle:title];
+    [submenu addItem:[self cpuLimitPresetItemWithTitle:@"200%" value:@"200" mode:mode appKey:appKey]];
+    [submenu addItem:[self cpuLimitPresetItemWithTitle:@"100%" value:@"100" mode:mode appKey:appKey]];
     [submenu addItem:[self cpuLimitPresetItemWithTitle:@"25%" value:@"25" mode:mode appKey:appKey]];
     [submenu addItem:[self cpuLimitPresetItemWithTitle:@"10%" value:@"10" mode:mode appKey:appKey]];
     [submenu addItem:[self cpuLimitPresetItemWithTitle:@"5%" value:@"5" mode:mode appKey:appKey]];
@@ -2274,7 +2276,7 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
 
     NSAlert *alert = [[NSAlert alloc] init];
     alert.messageText = [mode isEqualToString:@"limit-background"] ? @"Limit CPU in Background" : @"Limit CPU Always";
-    alert.informativeText = @"Enter a maximum CPU percentage. Minimum is 0.01%.";
+    alert.informativeText = @"Enter a maximum CPU percentage. Minimum is 0.01%. Apps using multiple cores can exceed 100%.";
     alert.accessoryView = field;
     [alert addButtonWithTitle:@"Apply"];
     [alert addButtonWithTitle:@"Cancel"];

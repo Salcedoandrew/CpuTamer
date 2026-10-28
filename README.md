@@ -96,6 +96,10 @@ Two checkboxes in each app's menu refine any pause, lower-priority, or CPU-limit
 * `Don't stop or slow when sound is playing` - Keeps the rule from applying while system audio is playing. This
   protection is on by default for new rules; the checkbox switches it off per app.
 
+Limit targets are not capped at one core: a multithreaded app observed at 300% can be capped at 200% (or any custom
+value above 100%) via the 200%/100% presets or Custom. The limit is a duty cycle, so the app runs roughly
+target/observed of each cycle.
+
 ## Preferences
 
 OpenTamer's preferences are available from the `...` button in the main panel.

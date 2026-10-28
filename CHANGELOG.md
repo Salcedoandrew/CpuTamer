@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Per-app "Only stop or slow when hidden" rule option (AppTamer-style): pause, lower-priority, and CPU-limit rules now stay idle while the app is merely in the background and only apply once the app is hidden; unhiding restores full speed on the next tick.
 - Per-app "Don't stop or slow when sound is playing" toggle in the per-app menu, alongside the hidden-only option. Audio protection was already default-on for new rules; it can now be switched off per app.
+- Multi-core CPU-limit presets (AppPolice-style): 200% and 100% now sit above the existing presets in the Limit CPU submenu, and the custom prompt notes that multi-core apps can exceed 100%. The duty-cycle engine already handled targets above 100%; only the exposure was missing.
 
 ## [v1.4.1] - 2026-09-12
 ### Fixed
