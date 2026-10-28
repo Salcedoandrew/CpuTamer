@@ -1748,6 +1748,7 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
     [generalMenu addItem:[self launchAtLoginItem]];
     [generalMenu addItem:[self boolPreferenceItemWithTitle:@"Show Menu Icon" key:@"showMenuBarIcon" fallback:[self showMenuBarIcon]]];
     [generalMenu addItem:[self boolPreferenceItemWithTitle:@"Aggregate By Name" key:@"aggregateByName" fallback:YES]];
+    [generalMenu addItem:[self boolPreferenceItemWithTitle:@"Show System Processes" key:@"showSystemProcesses" fallback:NO]];
     [self addStringPreferenceWithTitle:@"CPU Display"
                                     key:@"cpuDisplayMode"
                                fallback:@"per_core_process"

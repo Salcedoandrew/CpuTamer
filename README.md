@@ -113,6 +113,7 @@ General preferences control the shape of the app:
 * **Launch at Login** - Start OpenTamer automatically when you log in.
 * **Show Menu Icon** - Show or hide the OpenTamer icon next to the CPU text.
 * **Aggregate By Name** - Group processes by process name instead of app bundle metadata.
+* **Show System Processes** - List safety-blocked system processes in the process menus. Off by default; their CPU is folded into the "System / Other" row instead.
 * **CPU Display** - Show app CPU as per-core process CPU by default, or as system-normalized CPU.
 * **Wake Grace** - Wait after launch or system wake before applying management rules.
 

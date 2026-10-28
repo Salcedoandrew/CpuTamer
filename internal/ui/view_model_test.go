@@ -545,3 +545,27 @@ func TestWithGraphWindowStoresWindowBounds(t *testing.T) {
 		t.Fatalf("window end = %v, want %v", graph.WindowEndUnix, float64(end.Unix()))
 	}
 }
+
+func TestBuildAllProcessRowsHidesSystemProcessesUnlessEnabled(t *testing.T) {
+	groups := []core.AppGroup{
+		{
+			ID:              core.AppID{Name: "Editor"},
+			Controllability: core.ControllabilityNormal,
+			Processes:       []core.ProcessRef{{ID: core.ProcessID{PID: 1}, Name: "Editor"}},
+		},
+		{
+			ID:              core.AppID{Name: "kernel_task"},
+			Controllability: core.ControllabilityBlocked,
+			Processes:       []core.ProcessRef{{ID: core.ProcessID{PID: 0}, Name: "kernel_task"}},
+		},
+	}
+
+	hidden := BuildAllProcessRows(groups, nil, nil, false)
+	if len(hidden) != 1 || hidden[0].Name != "Editor" {
+		t.Fatalf("hidden rows = %#v, want Editor only", hidden)
+	}
+	shown := BuildAllProcessRows(groups, nil, nil, true)
+	if len(shown) != 2 {
+		t.Fatalf("shown rows = %d, want 2", len(shown))
+	}
+}

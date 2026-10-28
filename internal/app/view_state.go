@@ -20,17 +20,18 @@ func (controller *Controller) buildMenuBarStateLocked(now time.Time, status stri
 	cfg := controller.cfg
 	alert := controller.systemAlertLevelLocked(now)
 	logicalCPUCount := runtime.NumCPU()
-	allRows := ui.WithSystemCPUPercent(ui.ApplyTrackingToProcessRows(ui.BuildAllProcessRows(controller.lastGroups, controller.lastAppSamples, controller.lastStatuses, true), cfg.Rules), logicalCPUCount)
-	currentRows := ui.WithSystemCPUPercent(ui.ApplyTrackingToProcessRows(controller.topProcessRowsLocked(now), cfg.Rules), logicalCPUCount)
-	averageRows := ui.WithSystemCPUPercent(ui.ApplyTrackingToProcessRows(controller.averageProcessRowsLocked(now), cfg.Rules), logicalCPUCount)
+	showSystem := cfg.Preferences.ShowSystemProcesses
+	allRows := ui.WithSystemCPUPercent(ui.ApplyTrackingToProcessRows(ui.BuildAllProcessRows(controller.lastGroups, controller.lastAppSamples, controller.lastStatuses, showSystem), cfg.Rules), logicalCPUCount)
+	currentRows := ui.WithSystemCPUPercent(ui.ApplyTrackingToProcessRows(controller.topProcessRowsLocked(now, showSystem), cfg.Rules), logicalCPUCount)
+	averageRows := ui.WithSystemCPUPercent(ui.ApplyTrackingToProcessRows(controller.averageProcessRowsLocked(now, showSystem), cfg.Rules), logicalCPUCount)
 	rows := ui.WithAverageCPUForCurrentRows(currentRows, averageRows)
 	if core.NormalizeTopProcessesSortMode(cfg.Preferences.TopProcessesSort) == core.TopProcessesSortAverage {
 		rows = ui.WithCurrentCPUForAverageRows(limitProcessRows(averageRows, topProcessesLimit), allRows)
 	}
 	rows = ui.AppendSystemCPUResidualRow(rows, controller.lastTotalCPU, logicalCPUCount, topProcessesLimit)
-	menuBarRows := ui.WithSystemCPUPercent(ui.BuildMenuBarRows(cfg.Rules, controller.lastGroups, controller.lastAppSamples, controller.lastStatuses, true), logicalCPUCount)
+	menuBarRows := ui.WithSystemCPUPercent(ui.BuildMenuBarRows(cfg.Rules, controller.lastGroups, controller.lastAppSamples, controller.lastStatuses, showSystem), logicalCPUCount)
 	menuBarRows = ui.WithAverageCPUForCurrentRows(menuBarRows, averageRows)
-	tracked := ui.WithSystemCPUPercent(ui.BuildTrackedRows(cfg.Rules, controller.lastGroups, controller.lastAppSamples, controller.lastStatuses, true), logicalCPUCount)
+	tracked := ui.WithSystemCPUPercent(ui.BuildTrackedRows(cfg.Rules, controller.lastGroups, controller.lastAppSamples, controller.lastStatuses, showSystem), logicalCPUCount)
 	tracked = ui.WithAverageCPUForCurrentRows(tracked, averageRows)
 	managed := ui.WithManagedSystemCPUPercent(ui.BuildManagedRows(cfg.Rules, controller.lastGroups, controller.lastAppSamples, controller.lastStatuses), logicalCPUCount)
 	managed = ui.WithManagedAverageCPU(managed, averageRows)
@@ -78,11 +79,11 @@ func (controller *Controller) systemAlertLevelLocked(now time.Time) core.AlertLe
 	return core.AlertLevelHigh
 }
 
-func (controller *Controller) topProcessRowsLocked(now time.Time) []ui.ProcessRow {
-	return ui.BuildTopProcessRows(controller.lastGroups, controller.lastAppSamples, controller.lastStatuses, true, topProcessesLimit)
+func (controller *Controller) topProcessRowsLocked(now time.Time, includeSystem bool) []ui.ProcessRow {
+	return ui.BuildTopProcessRows(controller.lastGroups, controller.lastAppSamples, controller.lastStatuses, includeSystem, topProcessesLimit)
 }
 
-func (controller *Controller) averageProcessRowsLocked(now time.Time) []ui.ProcessRow {
+func (controller *Controller) averageProcessRowsLocked(now time.Time, includeSystem bool) []ui.ProcessRow {
 	if controller.history == nil {
 		return nil
 	}
@@ -91,7 +92,7 @@ func (controller *Controller) averageProcessRowsLocked(now time.Time) []ui.Proce
 	if len(samples) == 0 {
 		return nil
 	}
-	return ui.BuildTopProcessRows(controller.lastGroups, samples, controller.lastStatuses, true, 0)
+	return ui.BuildTopProcessRows(controller.lastGroups, samples, controller.lastStatuses, includeSystem, 0)
 }
 
 func limitProcessRows(rows []ui.ProcessRow, limit int) []ui.ProcessRow {

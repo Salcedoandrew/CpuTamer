@@ -31,6 +31,7 @@ const (
 	PreferenceCPULimiterEnabled             PreferenceField = "cpuLimiterEnabled"
 	PreferenceAggregateByName               PreferenceField = "aggregateByName"
 	PreferenceShowMenuBarIcon               PreferenceField = "showMenuBarIcon"
+	PreferenceShowSystemProcesses           PreferenceField = "showSystemProcesses"
 	PreferenceTopProcessesSort              PreferenceField = "topProcessesSort"
 	PreferenceCPUDisplayMode                PreferenceField = "cpuDisplayMode"
 	PreferenceStatsInterval                 PreferenceField = "statsInterval"
@@ -115,6 +116,8 @@ func setBoolPreference(preferences *core.GlobalPreferences, field PreferenceFiel
 		preferences.AggregateByName = value
 	case PreferenceShowMenuBarIcon:
 		preferences.ShowMenuBarIcon = value
+	case PreferenceShowSystemProcesses:
+		preferences.ShowSystemProcesses = value
 	case PreferenceHighCPUDetectionEnabled:
 		preferences.HighCPUDetectionEnabled = value
 	default:

@@ -485,6 +485,8 @@ func TestBuildMenuBarStateIncludesBlockedRowsInVisibleProcessLists(t *testing.T)
 		Mode:    core.RuleModeObserveOnly,
 		TrackIn: []core.RuleTrackingLocation{core.RuleTrackInMenuBar, core.RuleTrackInManagedApps},
 	}}
+	// Blocked rows are hidden by default; this test covers the opt-in.
+	controller.cfg.Preferences.ShowSystemProcesses = true
 
 	state := controller.buildMenuBarStateLocked(time.Unix(2, 0), "")
 	var foundAll bool
@@ -890,6 +892,9 @@ func TestBuildMenuBarStateIncludesBlockedSelfInCurrentTopRows(t *testing.T) {
 			{AppID: editorID, CPUPercent: 10, SampledAt: time.Unix(6, 0)},
 		},
 	}
+
+	// Blocked rows are hidden by default; this test covers the opt-in.
+	controller.cfg.Preferences.ShowSystemProcesses = true
 
 	state := controller.buildMenuBarStateLocked(time.Unix(6, 0), "")
 	if len(state.TopProcesses) < 2 || state.TopProcesses[0].AppID != selfID {
@@ -1464,4 +1469,46 @@ func testGroups(ids ...core.AppID) []core.AppGroup {
 
 func floatPtr(value float64) *float64 {
 	return new(value)
+}
+
+func TestBuildMenuBarStateHidesSystemProcessesByDefault(t *testing.T) {
+	selfID := core.AppID{Name: "OpenTamer"}
+	editorID := core.AppID{Name: "Editor"}
+	controller := &Controller{
+		cfg:   config.DefaultConfig(),
+		stats: core.NewStatsDocument(),
+		lastStatuses: map[string]core.AppStatus{
+			selfID.Key():   core.AppStatusBlockedBySafety,
+			editorID.Key(): core.AppStatusObserved,
+		},
+		lastGroups: []core.AppGroup{
+			{
+				ID:              selfID,
+				Controllability: core.ControllabilityBlocked,
+				SafetyReason:    core.SafetyReasonOpenTamerSelf,
+				Status:          core.AppStatusBlockedBySafety,
+				Processes:       []core.ProcessRef{{ID: core.ProcessID{PID: 10}, Name: "OpenTamer"}},
+			},
+			{
+				ID:              editorID,
+				Controllability: core.ControllabilityNormal,
+				Status:          core.AppStatusObserved,
+				Processes:       []core.ProcessRef{{ID: core.ProcessID{PID: 42}, Name: "Editor"}},
+			},
+		},
+		lastAppSamples: []core.AppCPUSample{
+			{AppID: selfID, CPUPercent: 40, SampledAt: time.Unix(1, 0)},
+			{AppID: editorID, CPUPercent: 12, SampledAt: time.Unix(1, 0)},
+		},
+	}
+
+	state := controller.buildMenuBarStateLocked(time.Unix(2, 0), "")
+	for _, row := range state.AllProcesses {
+		if row.AppID == selfID {
+			t.Fatalf("All Processes should hide blocked rows by default: %#v", state.AllProcesses)
+		}
+	}
+	if len(state.TopProcesses) == 0 || state.TopProcesses[0].AppID != editorID {
+		t.Fatalf("top rows = %#v, want Editor first with system hidden", state.TopProcesses)
+	}
 }
