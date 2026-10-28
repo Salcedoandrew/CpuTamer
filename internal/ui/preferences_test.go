@@ -204,3 +204,22 @@ func TestApplyPreferencesRejectsCPULimitBelowMinimum(t *testing.T) {
 		t.Fatal("expected CPU limit below minimum to fail")
 	}
 }
+
+func TestApplyPreferencesCommandTogglesShowSystemProcesses(t *testing.T) {
+	cfg := config.DefaultConfig()
+	if cfg.Preferences.ShowSystemProcesses {
+		t.Fatal("system processes should be hidden by default")
+	}
+
+	updated, err := ApplyPreferencesCommand(cfg, PreferencesCommand{
+		Kind:      CommandSetBoolPreference,
+		Field:     PreferenceShowSystemProcesses,
+		BoolValue: true,
+	})
+	if err != nil {
+		t.Fatalf("apply show system processes: %v", err)
+	}
+	if !updated.Preferences.ShowSystemProcesses {
+		t.Fatal("show system processes should be enabled")
+	}
+}

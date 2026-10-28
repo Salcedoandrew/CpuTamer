@@ -1197,6 +1197,30 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
     return value == nil || value == [NSNull null] ? YES : [value boolValue];
 }
 
+- (BOOL)rowFlag:(NSDictionary *)row key:(NSString *)key {
+    id value = row[key];
+    return value != nil && value != [NSNull null] && [value boolValue];
+}
+
+// AppTamer-style per-app option checkboxes. The Go command handler is a
+// no-op when the app has no rule yet, so these are most useful in the
+// tracked/managed menus where a rule already exists.
+- (void)addRuleOptionItemsForRow:(NSDictionary *)row toMenu:(NSMenu *)menu {
+    NSString *appKey = [self appKeyFromRow:row];
+    if (appKey.length == 0) {
+        return;
+    }
+    BOOL enabled = [self rowCanSlow:row] || [self rowCanPause:row];
+    NSMenuItem *hidden = [self commandItemWithTitle:@"Only stop or slow when hidden" command:[NSString stringWithFormat:@"rule|toggle-only-hidden|%@", appKey]];
+    [self setCommandItem:hidden enabled:enabled];
+    [self setCommandItem:hidden state:[self rowFlag:row key:@"onlyWhenHidden"] ? NSControlStateValueOn : NSControlStateValueOff];
+    [menu addItem:hidden];
+    NSMenuItem *audio = [self commandItemWithTitle:@"Don't stop or slow when sound is playing" command:[NSString stringWithFormat:@"rule|toggle-protect-audio|%@", appKey]];
+    [self setCommandItem:audio enabled:enabled];
+    [self setCommandItem:audio state:[self rowFlag:row key:@"protectAudio"] ? NSControlStateValueOn : NSControlStateValueOff];
+    [menu addItem:audio];
+}
+
 - (BOOL)rowIsSystemBucket:(NSDictionary *)row {
     id value = row[@"systemBucket"];
     return value != nil && value != [NSNull null] && [value boolValue];
@@ -1219,6 +1243,8 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
 - (NSMenuItem *)cpuLimitScopeItemWithTitle:(NSString *)title mode:(NSString *)mode appKey:(NSString *)appKey {
     NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title action:nil keyEquivalent:@""];
     NSMenu *submenu = [[OpenTamerPersistentMenu alloc] initWithTitle:title];
+    [submenu addItem:[self cpuLimitPresetItemWithTitle:@"200%" value:@"200" mode:mode appKey:appKey]];
+    [submenu addItem:[self cpuLimitPresetItemWithTitle:@"100%" value:@"100" mode:mode appKey:appKey]];
     [submenu addItem:[self cpuLimitPresetItemWithTitle:@"25%" value:@"25" mode:mode appKey:appKey]];
     [submenu addItem:[self cpuLimitPresetItemWithTitle:@"10%" value:@"10" mode:mode appKey:appKey]];
     [submenu addItem:[self cpuLimitPresetItemWithTitle:@"5%" value:@"5" mode:mode appKey:appKey]];
@@ -1309,6 +1335,7 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
     NSMenuItem *pause = [self commandItemWithTitle:@"Pause in Background" command:[NSString stringWithFormat:@"rule|pause|%@", appKey]];
     [self setCommandItem:pause enabled:[self rowCanPause:row]];
     [menu addItem:pause];
+    [self addRuleOptionItemsForRow:row toMenu:menu];
     return menu;
 }
 
@@ -1384,6 +1411,7 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
     NSMenuItem *pause = [self commandItemWithTitle:@"Pause in Background" command:[NSString stringWithFormat:@"rule|pause|%@", appKey]];
     [self setCommandItem:pause enabled:[self rowCanPause:row]];
     [submenu addItem:pause];
+    [self addRuleOptionItemsForRow:row toMenu:submenu];
     return submenu;
 }
 
@@ -1495,6 +1523,7 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
     NSMenuItem *pause = [self commandItemWithTitle:@"Pause in Background" command:[NSString stringWithFormat:@"rule|pause|%@", appKey]];
     [self setCommandItem:pause enabled:[self rowCanPause:row]];
     [submenu addItem:pause];
+    [self addRuleOptionItemsForRow:row toMenu:submenu];
     [submenu addItem:NSMenuItem.separatorItem];
     [submenu addItem:[self commandItemWithTitle:@"Remove Rule" command:[NSString stringWithFormat:@"disable-rule|%@", appKey]]];
     return submenu;
@@ -1719,6 +1748,7 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
     [generalMenu addItem:[self launchAtLoginItem]];
     [generalMenu addItem:[self boolPreferenceItemWithTitle:@"Show Menu Icon" key:@"showMenuBarIcon" fallback:[self showMenuBarIcon]]];
     [generalMenu addItem:[self boolPreferenceItemWithTitle:@"Aggregate By Name" key:@"aggregateByName" fallback:YES]];
+    [generalMenu addItem:[self boolPreferenceItemWithTitle:@"Show System Processes" key:@"showSystemProcesses" fallback:NO]];
     [self addStringPreferenceWithTitle:@"CPU Display"
                                     key:@"cpuDisplayMode"
                                fallback:@"per_core_process"
@@ -2247,7 +2277,7 @@ static const CGFloat OpenTamerStatusItemLengthTextOnly = 52.0;
 
     NSAlert *alert = [[NSAlert alloc] init];
     alert.messageText = [mode isEqualToString:@"limit-background"] ? @"Limit CPU in Background" : @"Limit CPU Always";
-    alert.informativeText = @"Enter a maximum CPU percentage. Minimum is 0.01%.";
+    alert.informativeText = @"Enter a maximum CPU percentage. Minimum is 0.01%. Apps using multiple cores can exceed 100%.";
     alert.accessoryView = field;
     [alert addButtonWithTitle:@"Apply"];
     [alert addButtonWithTitle:@"Cancel"];

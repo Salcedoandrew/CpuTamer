@@ -15,6 +15,11 @@ type SchedulerInput struct {
 	Preferences core.GlobalPreferences
 	Runtime     core.RuntimeState
 	Frontmost   core.AppID
+	// HiddenApps maps an app key (see core.AppID.Key, plus a
+	// "name:<lowercased display name>" fallback) to whether that app is
+	// currently hidden. Only rules with OnlyWhenHidden consult it; an
+	// app absent from the map is treated as not hidden.
+	HiddenApps  map[string]bool
 	Policy      core.SystemPolicyState
 	Protections ProtectionState
 	Now         time.Time
@@ -173,6 +178,19 @@ func (scheduler *Scheduler) Evaluate(input SchedulerInput) SchedulerResult {
 
 		if rule.WaitBeforeApply > 0 && now.Sub(appRuntime.BackgroundSince) < rule.WaitBeforeApply {
 			appRuntime.Status = core.AppStatusWaiting
+			runtime.AppStates[key] = appRuntime
+			result.Statuses[key] = appRuntime.Status
+			continue
+		}
+
+		// AppTamer-style "only stop or slow when app is hidden": a rule
+		// with OnlyWhenHidden does nothing while the app is merely in
+		// the background. Any taming already applied is restored, so
+		// unhiding an app returns it to full speed on the next tick.
+		if rule.OnlyWhenHidden && !groupIsHidden(group, input) {
+			result.Actions = append(result.Actions, scheduler.restoreGroupActions(group, runtime, now, core.ControlReasonUserRule, true)...)
+			clearCPULimitRuntime(&appRuntime)
+			appRuntime.Status = statusForForeground(group, runtime)
 			runtime.AppStates[key] = appRuntime
 			result.Statuses[key] = appRuntime.Status
 			continue
@@ -395,6 +413,23 @@ func groupIsForeground(group core.AppGroup, frontmost core.AppID) bool {
 				return true
 			}
 		}
+	}
+	return false
+}
+
+// groupIsHidden reports whether the group is hidden, using the hidden
+// map built from AppKit running apps. The exact app key is checked first;
+// name-aggregated groups fall back to the display name, since aggregation
+// drops bundle/path metadata from the group ID.
+func groupIsHidden(group core.AppGroup, input SchedulerInput) bool {
+	if len(input.HiddenApps) == 0 {
+		return false
+	}
+	if input.HiddenApps[group.ID.Key()] {
+		return true
+	}
+	if group.ID.Name != "" {
+		return input.HiddenApps["name:"+strings.ToLower(group.ID.Name)]
 	}
 	return false
 }

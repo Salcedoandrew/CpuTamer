@@ -86,6 +86,20 @@ also hides the app when it is stopped, which keeps the desktop cleaner when the 
 This is the most aggressive rule currently exposed in the UI. It is useful for apps that do not need to do any background
 work, but should still be available instantly when selected again.
 
+### Per-app options
+
+Two checkboxes in each app's menu refine any pause, lower-priority, or CPU-limit rule:
+
+* `Only stop or slow when hidden` - The rule stays idle while the app is merely in the background and only applies
+  once the app is hidden (Cmd+H or Hide). Unhiding the app restores it to full speed on the next tick. This mirrors
+  AppTamer's "Only stop or slow when app is hidden" option.
+* `Don't stop or slow when sound is playing` - Keeps the rule from applying while system audio is playing. This
+  protection is on by default for new rules; the checkbox switches it off per app.
+
+Limit targets are not capped at one core: a multithreaded app observed at 300% can be capped at 200% (or any custom
+value above 100%) via the 200%/100% presets or Custom. The limit is a duty cycle, so the app runs roughly
+target/observed of each cycle.
+
 ## Preferences
 
 OpenTamer's preferences are available from the `...` button in the main panel.
@@ -99,6 +113,7 @@ General preferences control the shape of the app:
 * **Launch at Login** - Start OpenTamer automatically when you log in.
 * **Show Menu Icon** - Show or hide the OpenTamer icon next to the CPU text.
 * **Aggregate By Name** - Group processes by process name instead of app bundle metadata.
+* **Show System Processes** - List safety-blocked system processes in the process menus. Off by default; their CPU is folded into the "System / Other" row instead.
 * **CPU Display** - Show app CPU as per-core process CPU by default, or as system-normalized CPU.
 * **Wake Grace** - Wait after launch or system wake before applying management rules.
 

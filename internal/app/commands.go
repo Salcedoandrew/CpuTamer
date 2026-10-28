@@ -162,6 +162,25 @@ func (controller *Controller) handleRuleCommandLocked(parts []string) {
 	}
 	safety := core.SafetyDecisionFromGroup(group)
 	existing, hasExisting := controller.ruleForAppLocked(group.ID)
+	// Per-app option toggles (AppTamer-style checkboxes in the per-app
+	// menu). They modify an existing rule only; with no rule there is
+	// nothing to gate or protect, so the toggle is a no-op. The flags
+	// are stored even on observe-only rules, so they take effect if a
+	// control mode is set later.
+	switch mode {
+	case "toggle-only-hidden", "toggle-protect-audio":
+		if !hasExisting {
+			return
+		}
+		rule := existing
+		if mode == "toggle-only-hidden" {
+			rule.OnlyWhenHidden = !rule.OnlyWhenHidden
+		} else {
+			rule.ProtectAudio = !rule.ProtectAudio
+		}
+		controller.upsertRuleLocked(rule, mode)
+		return
+	}
 	if mode == "pause" && hasExisting && existing.Mode == core.RuleModePauseInBackground {
 		controller.clearPauseRuleLocked(existing, appKey)
 		return

@@ -56,6 +56,7 @@ func (app RunningApp) AppProcessHint() core.AppProcessHint {
 		PrimaryPID:     core.ProcessID{PID: app.PID},
 		ExecutablePath: app.ExecutablePath,
 		BundlePath:     app.BundlePath,
+		Hidden:         app.Hidden,
 	}
 }
 

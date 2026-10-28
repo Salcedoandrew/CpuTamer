@@ -52,6 +52,7 @@ type AppRule struct {
 	CPUPercent            *float64               `json:"cpuPercent,omitempty"`
 	HideWhenStopped       bool                   `json:"hideWhenStopped"`
 	ProtectAudio          bool                   `json:"protectAudio"`
+	OnlyWhenHidden        bool                   `json:"onlyWhenHidden,omitempty"`
 	AllowBrowserPause     bool                   `json:"allowBrowserPause"`
 	PreferEfficiencyCores bool                   `json:"preferEfficiencyCores"`
 }
@@ -126,10 +127,14 @@ func NormalizeTrackIn(locations []RuleTrackingLocation) []RuleTrackingLocation {
 }
 
 type GlobalPreferences struct {
-	ManagementEnabled             bool          `json:"managementEnabled"`
-	CPULimiterEnabled             bool          `json:"cpuLimiterEnabled"`
-	AggregateByName               bool          `json:"aggregateByName"`
-	ShowMenuBarIcon               bool          `json:"showMenuBarIcon"`
+	ManagementEnabled bool `json:"managementEnabled"`
+	CPULimiterEnabled bool `json:"cpuLimiterEnabled"`
+	AggregateByName   bool `json:"aggregateByName"`
+	ShowMenuBarIcon   bool `json:"showMenuBarIcon"`
+	// ShowSystemProcesses lists safety-blocked system processes in the
+	// process menus. Off by default: system processes stay hidden and
+	// their CPU is folded into the "System / Other" residual row.
+	ShowSystemProcesses           bool          `json:"showSystemProcesses,omitempty"`
 	TopProcessesSort              string        `json:"topProcessesSort"`
 	CPUDisplayMode                string        `json:"cpuDisplayMode"`
 	StatsInterval                 time.Duration `json:"statsInterval"`

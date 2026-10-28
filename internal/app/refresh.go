@@ -3,6 +3,7 @@ package app
 import (
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Digital-Shane/open-tamer/internal/config"
@@ -26,7 +27,7 @@ func (controller *Controller) Refresh() {
 	controller.mu.Unlock()
 
 	var hints []core.AppProcessHint
-	if !cfg.Preferences.AggregateByName {
+	if !cfg.Preferences.AggregateByName || needsHiddenState(cfg.Rules) {
 		var appErr error
 		hints, appErr = controller.applications.AppProcessHints()
 		if appErr != nil {
@@ -117,6 +118,7 @@ func (controller *Controller) Refresh() {
 			Preferences: cfg.Preferences,
 			Runtime:     runtimeState,
 			Frontmost:   frontmost,
+			HiddenApps:  hiddenAppsByKey(hints),
 			Policy:      policy,
 			Protections: protections,
 			Now:         policyNow,
@@ -225,6 +227,35 @@ func needsFrontmostApp(rules []core.AppRule) bool {
 		}
 	}
 	return false
+}
+
+// needsHiddenState reports whether any rule gates its controls on the
+// app being hidden, which needs AppKit running-app state even when
+// groups are aggregated by name.
+func needsHiddenState(rules []core.AppRule) bool {
+	for _, rule := range rules {
+		if rule.Mode != core.RuleModeObserveOnly && rule.OnlyWhenHidden {
+			return true
+		}
+	}
+	return false
+}
+
+// hiddenAppsByKey indexes hidden running apps by app key, plus a display
+// name fallback for name-aggregated groups. A hidden entry is never
+// removed by a later visible app sharing the name.
+func hiddenAppsByKey(hints []core.AppProcessHint) map[string]bool {
+	hidden := make(map[string]bool, len(hints))
+	for _, hint := range hints {
+		if !hint.Hidden {
+			continue
+		}
+		hidden[hint.AppID.Key()] = true
+		if hint.AppID.Name != "" {
+			hidden["name:"+strings.ToLower(hint.AppID.Name)] = true
+		}
+	}
+	return hidden
 }
 
 func needsAudioProtection(rules []core.AppRule) bool {

@@ -49,6 +49,23 @@ func TestCPULimitPlannerAllowsPointZeroOnePercent(t *testing.T) {
 	}
 }
 
+// AppPolice-style multi-core target: a multithreaded app observed at 300%
+// capped at 200% runs two thirds of each cycle.
+func TestCPULimitPlannerSupportsMultiCoreTarget(t *testing.T) {
+	planner := DefaultCPULimitPlanner(true)
+	plan := planner.Plan(CPULimitInput{ObservedCPU: 300, TargetCPU: 200})
+
+	if !plan.Active {
+		t.Fatal("expected active plan")
+	}
+	if plan.RunFor != time.Duration(6666666667) {
+		t.Fatalf("run for = %s, want 6.666666667s", plan.RunFor)
+	}
+	if plan.StopFor != time.Duration(3333333333) {
+		t.Fatalf("stop for = %s, want 3.333333333s", plan.StopFor)
+	}
+}
+
 func TestCPULimitPlannerStopsWhenForeground(t *testing.T) {
 	planner := DefaultCPULimitPlanner(true)
 	plan := planner.Plan(CPULimitInput{ObservedCPU: 100, TargetCPU: 50, Foreground: true})
